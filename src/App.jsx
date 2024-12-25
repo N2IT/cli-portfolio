@@ -55,9 +55,9 @@ Type 'help' to see available commands.`;
 
     contact: `Let's connect!
 
-    • Email: your.email@example.com
-    • GitHub: github.com/yourusername
-    • LinkedIn: linkedin.com/in/yourprofile
+    • Email: tonyeder11@gmail.com
+    • GitHub: https://github.com/N2IT
+    • LinkedIn: https://www.linkedin.com/in/tony-eder/
     
     Feel free to reach out for collaborations or opportunities!`
   };
@@ -74,46 +74,62 @@ Available commands:
 `;
 
   const typeText = (text, onUpdate, onCursorMove) => {
-    setIsResponseTyping(true);
-    let currentPos = 0;
-    const interval = setInterval(() => {
-      if (currentPos <= text.length) {
-        onUpdate(text.slice(0, currentPos));
-        onCursorMove(currentPos - 1);
-        currentPos++;
-      } else {
-        clearInterval(interval);
-        onCursorMove(null);
-        setIsTyping(false);
-        setIsResponseTyping(false);
-      }
-    }, 30);
+    setIsTyping(true);        // Start typing animation
+    setIsResponseTyping(true); // Prevent input cursor
+    
+    return new Promise((resolve) => {
+      let currentPos = 0;
+      const interval = setInterval(() => {
+        if (currentPos <= text.length) {
+          onUpdate(text.slice(0, currentPos));
+          onCursorMove(currentPos - 1);
+          currentPos++;
+        } else {
+          clearInterval(interval);
+          onCursorMove(null);
+          setIsTyping(false);
+          setIsResponseTyping(false); // Allow input cursor only after animation completes
+          resolve();
+        }
+      }, 30);
+    });
   };
 
   // Initial welcome message effect
   useEffect(() => {
     let mounted = true;
+    setIsTyping(true);  // Ensure we're in typing state
+    setIsResponseTyping(true);  // Prevent input cursor from showing
+
     typeText(
       welcomeMessage, 
-      (result) => { if (mounted) setText(result); },
-      (pos) => { if (mounted) setCursorPosition(pos); }
+      (result) => { 
+        if (mounted) setText(result); 
+      },
+      (pos) => { 
+        if (mounted) setCursorPosition(pos); 
+      }
     );
+
     return () => {
       mounted = false;
       setText('');
       setCursorPosition(null);
       setIsTyping(false);
+      setIsResponseTyping(false);
     };
   }, []);
 
   useEffect(() => {
     const handleKeyPress = (e) => {
       if (e.key === 'Enter' && input.trim()) {
+        setIsResponseTyping(true); // Prevent input cursor while processing command
         const newCommand = { command: input, output: '', cursorPos: null };
         
         if (input.toLowerCase() === 'clear') {
           setCommandHistory([]);
           setInput('');
+          setIsResponseTyping(false); // Allow input cursor after clear
           return;
         }
 
@@ -213,7 +229,15 @@ Available commands:
         color: '#00ff00'
       }}
     >
-      <div className="typing-text" style={{ whiteSpace: 'pre-line' }}>
+      <div 
+        className="typing-text" 
+        style={{ 
+          whiteSpace: 'pre-line',
+          minWidth: '600px',
+          lineHeight: '1.5',
+          marginBottom: '1rem'
+        }}
+      >
         {renderTextWithCursor(text, cursorPosition)}
       </div>
       
@@ -224,7 +248,14 @@ Available commands:
             <span className="ml-2">{entry.command}</span>
           </div>
           {entry.output && (
-            <div style={{ whiteSpace: 'pre-line' }} className="mt-1">
+            <div 
+              style={{ 
+                whiteSpace: 'pre-line',
+                minWidth: '600px',
+                lineHeight: '1.5'
+              }} 
+              className="mt-1"
+            >
               {renderTextWithCursor(entry.output, entry.cursorPos)}
             </div>
           )}
