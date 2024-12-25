@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import './App.css';
 
 function App() {
@@ -8,6 +8,10 @@ function App() {
   const [cursorPosition, setCursorPosition] = useState(0);
   const [isTyping, setIsTyping] = useState(true);
   const [isResponseTyping, setIsResponseTyping] = useState(false);
+
+  // Add ref for the container
+  const containerRef = useRef(null);
+  const inputLineRef = useRef(null);
 
   // Welcome message
   const welcomeMessage = `Welcome to my interactive terminal portfolio!
@@ -73,9 +77,17 @@ Available commands:
 6. help        - Show this menu
 `;
 
+  // Add scroll into view function
+  const scrollToBottom = () => {
+    if (inputLineRef.current) {
+      inputLineRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  // Update typeText to scroll after animation
   const typeText = (text, onUpdate, onCursorMove) => {
-    setIsTyping(true);        // Start typing animation
-    setIsResponseTyping(true); // Prevent input cursor
+    setIsTyping(true);
+    setIsResponseTyping(true);
     
     return new Promise((resolve) => {
       let currentPos = 0;
@@ -84,11 +96,13 @@ Available commands:
           onUpdate(text.slice(0, currentPos));
           onCursorMove(currentPos - 1);
           currentPos++;
+          scrollToBottom(); // Scroll while typing
         } else {
           clearInterval(interval);
           onCursorMove(null);
           setIsTyping(false);
-          setIsResponseTyping(false); // Allow input cursor only after animation completes
+          setIsResponseTyping(false);
+          scrollToBottom(); // Ensure we're scrolled to bottom after typing
           resolve();
         }
       }, 30);
@@ -123,7 +137,7 @@ Available commands:
   useEffect(() => {
     const handleKeyPress = (e) => {
       if (e.key === 'Enter' && input.trim()) {
-        setIsResponseTyping(true); // Prevent input cursor while processing command
+        setIsResponseTyping(true);
         const newCommand = { command: input, output: '', cursorPos: null };
         
         if (input.toLowerCase() === 'clear') {
@@ -199,6 +213,7 @@ Available commands:
         }
         
         setInput('');
+        scrollToBottom();
       } else if (e.key === 'Backspace') {
         setInput(prev => prev.slice(0, -1));
       } else if (e.key.length === 1) {
@@ -223,49 +238,63 @@ Available commands:
 
   return (
     <div 
-      className="min-h-screen font-mono p-4" 
+      ref={containerRef}
+      className="min-h-screen font-mono p-4 overflow-y-auto" 
       style={{ 
         backgroundColor: '#000000',
-        color: '#00ff00'
+        color: '#00ff00',
+        maxHeight: '100vh',
+        height: '100vh',  // Force full viewport height
+        position: 'fixed', // Keep the container fixed
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        overflowY: 'auto'
       }}
     >
-      <div 
-        className="typing-text" 
-        style={{ 
-          whiteSpace: 'pre-line',
-          minWidth: '600px',
-          lineHeight: '1.5',
-          marginBottom: '1rem'
-        }}
-      >
-        {renderTextWithCursor(text, cursorPosition)}
-      </div>
-      
-      {commandHistory.map((entry, index) => (
-        <div key={index} className="mt-2">
-          <div className="flex items-center">
-            <span>$</span>
-            <span className="ml-2">{entry.command}</span>
-          </div>
-          {entry.output && (
-            <div 
-              style={{ 
-                whiteSpace: 'pre-line',
-                minWidth: '600px',
-                lineHeight: '1.5'
-              }} 
-              className="mt-1"
-            >
-              {renderTextWithCursor(entry.output, entry.cursorPos)}
-            </div>
-          )}
+      <div className="pb-20"> {/* Add padding at bottom for better scrolling */}
+        <div 
+          className="typing-text" 
+          style={{ 
+            whiteSpace: 'pre-line',
+            minWidth: '600px',
+            lineHeight: '1.5',
+            marginBottom: '1rem'
+          }}
+        >
+          {renderTextWithCursor(text, cursorPosition)}
         </div>
-      ))}
+        
+        {commandHistory.map((entry, index) => (
+          <div key={index} className="mt-2">
+            <div className="flex items-center">
+              <span>$</span>
+              <span className="ml-2">{entry.command}</span>
+            </div>
+            {entry.output && (
+              <div 
+                style={{ 
+                  whiteSpace: 'pre-line',
+                  minWidth: '600px',
+                  lineHeight: '1.5'
+                }} 
+                className="mt-1"
+              >
+                {renderTextWithCursor(entry.output, entry.cursorPos)}
+              </div>
+            )}
+          </div>
+        ))}
 
-      <div className="flex items-center mt-4">
-        <span>$</span>
-        <span className="ml-2">{input}</span>
-        {!isTyping && !isResponseTyping && cursorPosition === null && <div className="cursor"></div>}
+        <div 
+          ref={inputLineRef}
+          className="flex items-center mt-4"
+        >
+          <span>$</span>
+          <span className="ml-2">{input}</span>
+          {!isTyping && !isResponseTyping && cursorPosition === null && <div className="cursor"></div>}
+        </div>
       </div>
     </div>
   );
